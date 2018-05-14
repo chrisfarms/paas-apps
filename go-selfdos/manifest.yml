@@ -1,0 +1,11 @@
+---
+applications:
+ - name: webby-api-worker
+   memory:  100M
+   disk_quota: 50M
+   instances: 2
+   buildpack: go_buildpack
+   env:
+     GOVERSION: go1.9
+     GOPACKAGENAME: github.com/alphagov/paas-gameday/gorouter-connection-dos
+   command: ./bin/gorouter-connection-dos
