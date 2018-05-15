@@ -17,15 +17,8 @@ import (
 )
 
 var (
-	routeToSelf   string
-	port          int
-	maxConns      int
-	instanceIndex int
-	appID         string
-)
-
-const (
-	mbPerConnection = 0.2
+	routeToSelf string
+	port        int
 )
 
 func newHTTPClient() *http.Client {
@@ -59,31 +52,28 @@ func request(client *http.Client, req *http.Request) error {
 	return nil
 }
 
-func connection(id int) {
-	fmt.Println("starting connection", id, "for instance", instanceIndex)
-	ms := time.Duration(rand.Intn(10000)+250) * time.Millisecond
-	time.Sleep(ms)
-	fakeSessionID := rand.Intn(100000)
-	fakeEndpoints := []string{
-		"api/account",
-		"api/preferences",
-		"api/transactions",
-		"queue/notifications",
-		"queue/metrics",
-		"metrics",
-	}
-	fakeEndpoint := fakeEndpoints[rand.Intn(len(fakeEndpoints))]
-	url := fmt.Sprintf("%s/%s/%d/%d", routeToSelf, fakeEndpoint, fakeSessionID, id)
-	var err error
-	req, err := http.NewRequest("GET", url, nil)
-	if err != nil {
-		log.Fatal(err)
-	}
-	if appID != "" {
-		req.Header.Set("X-CF-APP-INSTANCE", fmt.Sprintf("%s:%d", appID, instanceIndex))
-	}
-	client := newHTTPClient()
+func connection() {
 	for {
+		ms := time.Duration(rand.Intn(2000)) * time.Millisecond
+		time.Sleep(ms)
+		client := newHTTPClient()
+		fakeSessionID := rand.Intn(100000)
+		fakeEndpoints := []string{
+			"api/account",
+			"api/preferences",
+			"api/transactions",
+			"queue/notifications",
+			"queue/metrics",
+			"metrics",
+		}
+		fakeEndpoint := fakeEndpoints[rand.Intn(len(fakeEndpoints))]
+		id := rand.Intn(1000)
+		url := fmt.Sprintf("%s/%s/%d/%d", routeToSelf, fakeEndpoint, fakeSessionID, id)
+		var err error
+		req, err := http.NewRequest("GET", url, nil)
+		if err != nil {
+			log.Fatal(err)
+		}
 		if err = request(client, req); err != nil {
 			fmt.Fprintln(os.Stderr, "GET", url, err, "...will try again in 3s")
 			time.Sleep(3 * time.Second)
@@ -103,17 +93,7 @@ func handler(res http.ResponseWriter, req *http.Request) {
 	if req.Method == "OPTIONS" {
 		return
 	}
-	if req.URL.Path == "/" {
-		fmt.Fprintf(res, "Hello, World")
-		return
-	}
-	fmt.Fprintf(res, "Hello, \n")
-	if f, ok := res.(http.Flusher); ok {
-		f.Flush()
-	}
-	n := time.Duration(rand.Intn(3)+6) * time.Second
-	time.Sleep(n)
-	fmt.Fprintf(res, "World")
+	fmt.Fprintf(res, "Hello, World")
 }
 
 func main() {
@@ -126,23 +106,13 @@ func main() {
 		for _, appURI := range app.ApplicationURIs {
 			routeToSelf = fmt.Sprintf("https://%s", appURI)
 		}
-		maxConns = int(float64(app.Limits.Mem) / mbPerConnection)
 		port = app.Port
-		instanceIndex = app.Index
-		appID = app.AppID
 	} else {
-		maxConns = 500
 		routeToSelf = fmt.Sprintf("http://127.0.0.1:8080")
 		port = 8080
 	}
-	go func() {
-		time.Sleep(8 * time.Second)
-		for i := 0; i < maxConns; i++ {
-			time.Sleep(100 * time.Millisecond)
-			go connection(i)
-		}
-	}()
+	go connection()
 	addr := fmt.Sprintf(":%d", port)
-	fmt.Println("listen:", addr, "maxconns:", maxConns, "route:", routeToSelf, "instanceIndex:", instanceIndex, "appID", appID)
+	fmt.Println("listen:", addr, "route:", routeToSelf)
 	log.Fatal(http.ListenAndServe(addr, nil))
 }

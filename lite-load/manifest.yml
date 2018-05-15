@@ -1,0 +1,11 @@
+---
+applications:
+ - name: lite-load
+   memory:  32M
+   disk_quota: 50M
+   instances: 2
+   buildpack: go_buildpack
+   env:
+     GOVERSION: go1.9
+     GOPACKAGENAME: github.com/chrisfarms/paas-apps/lite-load
+   command: ./bin/lite-load

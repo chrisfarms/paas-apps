@@ -1,6 +1,6 @@
 ---
 applications:
- - name: webby-api-worker
+ - name: api-worker
    memory:  100M
    disk_quota: 50M
    instances: 2
